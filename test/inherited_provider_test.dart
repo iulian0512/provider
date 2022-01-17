@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+
 // ignore: import_of_legacy_library_into_null_safe
 import 'package:mockito/mockito.dart';
 import 'package:provider/provider.dart';
@@ -1230,7 +1231,7 @@ DeferredInheritedProvider<int, int>(controller: 42, value: 24)'''),
     );
 
     testWidgets(
-      'fails if initialValueBuilder calls inheritFromElement/inheritFromWiggetOfExactType',
+      'fails if initialValueBuilder calls inheritFromElement/inheritFromWidgetOfExactType',
       (tester) async {
         await tester.pumpWidget(
           InheritedProvider<int>.value(
@@ -2422,25 +2423,26 @@ DeferredInheritedProvider<int, int>(controller: 42, value: 24)'''),
       ),
     );
 
+    FlutterError.onError = onError;
+
     expect(
       flutterErrors,
       contains(
         isA<FlutterErrorDetails>().having(
           (e) => e.exception,
           'exception',
-          isA<StateError>().having((s) => s.message, 'message', expected),
+          isA<StateError>().having(
+            (s) => s.message,
+            'message',
+            startsWith(expected),
+          ),
         ),
       ),
     );
-
-    FlutterError.onError = onError;
   });
 
   testWidgets('StateError is thrown when exception occurs in create',
       (tester) async {
-    const expected =
-        'Tried to read a provider that threw during the creation of its value.\n'
-        'The exception occurred during the creation of type String.';
     final onError = FlutterError.onError;
     final flutterErrors = <FlutterErrorDetails>[];
     FlutterError.onError = flutterErrors.add;
@@ -2453,18 +2455,65 @@ DeferredInheritedProvider<int, int>(controller: 42, value: 24)'''),
       ),
     );
 
+    FlutterError.onError = onError;
+
     expect(
       flutterErrors,
       contains(
         isA<FlutterErrorDetails>().having(
           (e) => e.exception,
           'exception',
-          isA<StateError>().having((s) => s.message, 'message', expected),
+          isA<StateError>().having(
+            (s) => s.message,
+            'message',
+            startsWith('''
+Tried to read a provider that threw during the creation of its value.
+The exception occurred during the creation of type String.
+
+══╡ EXCEPTION CAUGHT BY PROVIDER ╞═══════════════════════════════
+The following _Exception was thrown:
+Exception: oops
+
+When the exception was thrown, this was the stack:
+#0'''),
+          ),
         ),
       ),
     );
+  });
+
+  testWidgets('Exception is thrown when exception occurs in rebuild',
+      (tester) async {
+    const errorMessage = 'oops';
+    final onError = FlutterError.onError;
+    final flutterErrors = <FlutterErrorDetails>[];
+    FlutterError.onError = flutterErrors.add;
+
+    final provider = InheritedProvider<String>(
+      create: (_) => '',
+      update: (c, p) {
+        throw Exception(errorMessage);
+      },
+      child: TextOf<String>(),
+    );
+    await tester.pumpWidget(Provider.value(value: 0, child: provider));
 
     FlutterError.onError = onError;
+
+    expect(
+      flutterErrors,
+      contains(
+        isA<FlutterErrorDetails>().having(
+          (e) => e.exception,
+          'exception',
+          isA<Exception>().having(
+            (s) => s.toString(),
+            'toString',
+            contains(errorMessage),
+          ),
+        ),
+      ),
+    );
   });
 
   testWidgets(
@@ -2486,6 +2535,8 @@ DeferredInheritedProvider<int, int>(controller: 42, value: 24)'''),
       ),
     );
 
+    FlutterError.onError = onError;
+
     expect(
       flutterErrors,
       contains(
@@ -2496,8 +2547,6 @@ DeferredInheritedProvider<int, int>(controller: 42, value: 24)'''),
         ),
       ),
     );
-
-    FlutterError.onError = onError;
   });
 }
 

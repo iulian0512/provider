@@ -185,8 +185,8 @@ bool _debugIsSelecting = false;
 
 /// Adds a `select` method on [BuildContext].
 extension SelectContext on BuildContext {
-  /// Watch a value of type [T] exposed from a provider, and listen only partially
-  /// to changes.
+  /// Watch a value of type [T] exposed from a provider, and mark this widget for rebuild
+  /// on changes of that value.
   ///
   /// If [T] is nullable and no matching providers are found, [watch] will
   /// return `null`. Otherwise if [T] is non-nullable, will throw [ProviderNotFoundException].
@@ -316,7 +316,8 @@ abstract class InheritedContext<T> extends BuildContext {
   /// The current value exposed by [InheritedProvider].
   ///
   /// This property is lazy loaded, and reading it the first time may trigger
-  /// some side-effects such as creating a [T] instance or start a subscription.
+  /// some side-effects such as creating a [T] instance or starting
+  /// a subscription.
   T get value;
 
   /// Marks the [InheritedProvider] as needing to update dependents.
@@ -691,16 +692,18 @@ class _CreateInheritedProviderState<T>
     extends _DelegateState<T, _CreateInheritedProvider<T>> {
   VoidCallback? _removeListener;
   bool _didInitValue = false;
-  bool _didSucceedInit = false;
   T? _value;
   _CreateInheritedProvider<T>? _previousWidget;
+  FlutterErrorDetails? _initError;
 
   @override
   T get value {
-    if (_didInitValue && !_didSucceedInit) {
+    if (_didInitValue && _initError != null) {
+      // TODO(rrousselGit) update to use Error.throwWithStacktTrace when it reaches stable
       throw StateError(
         'Tried to read a provider that threw during the creation of its value.\n'
-        'The exception occurred during the creation of type $T.',
+        'The exception occurred during the creation of type $T.\n\n'
+        '${_initError?.toString()}',
       );
     }
     bool? _debugPreviousIsInInheritedProviderCreate;
@@ -725,7 +728,13 @@ class _CreateInheritedProviderState<T>
             return true;
           }());
           _value = delegate.create!(element!);
-          _didSucceedInit = true;
+        } catch (e, stackTrace) {
+          _initError = FlutterErrorDetails(
+            library: 'provider',
+            exception: e,
+            stack: stackTrace,
+          );
+          rethrow;
         } finally {
           assert(() {
             debugIsInInheritedProviderCreate =
@@ -750,7 +759,6 @@ class _CreateInheritedProviderState<T>
             return true;
           }());
           _value = delegate.update!(element!, _value);
-          _didSucceedInit = true;
         } finally {
           assert(() {
             debugIsInInheritedProviderCreate =
@@ -766,7 +774,6 @@ class _CreateInheritedProviderState<T>
           return true;
         }());
       }
-      _didSucceedInit = true;
     }
 
     element!._isNotifyDependentsEnabled = false;
