@@ -336,21 +336,8 @@ If you want to expose a variable that can be anything, consider changing
 `dynamic` to `Object` instead.
 ''',
     );
-    _InheritedProviderScopeElement<T?>? inheritedElement;
-
-    if (context.widget is _InheritedProviderScope<T?>) {
-      // An InheritedProvider<T>'s update tries to obtain a parent provider of
-      // the same type.
-      context.visitAncestorElements((parent) {
-        inheritedElement = parent.getElementForInheritedWidgetOfExactType<
-                _InheritedProviderScope<T?>>()
-            as _InheritedProviderScopeElement<T?>?;
-        return false;
-      });
-    } else {
-      inheritedElement = context.getElementForInheritedWidgetOfExactType<
-          _InheritedProviderScope<T?>>() as _InheritedProviderScopeElement<T?>?;
-    }
+    final inheritedElement = context.getElementForInheritedWidgetOfExactType<
+        _InheritedProviderScope<T?>>() as _InheritedProviderScopeElement<T?>?;
 
     if (inheritedElement == null && null is! T) {
       throw ProviderNotFoundException(T, context.widget.runtimeType);
@@ -441,6 +428,9 @@ class ProviderNullException implements Exception {
   final Type widgetType;
   @override
   String toString() {
+    if (kReleaseMode) {
+      return 'A provider for $valueType unexpectedly returned null.';
+    }
     return '''
 Error: The widget $widgetType tried to read Provider<$valueType> but the matching
 provider returned null.
@@ -467,6 +457,9 @@ class ProviderNotFoundException implements Exception {
 
   @override
   String toString() {
+    if (kReleaseMode) {
+      return 'Provider<$valueType> not found for $widgetType';
+    }
     return '''
 Error: Could not find the correct Provider<$valueType> above this $widgetType Widget
 
@@ -494,8 +487,8 @@ of your choice. There are a few common scenarios:
       create: (_) => Example(),
       // Will throw a ProviderNotFoundError, because `context` is associated
       // to the widget that is the parent of `Provider<Example>`
-      child: Text(context.watch<Example>()),
-    ),
+      child: Text(context.watch<Example>().toString()),
+    );
   }
   ```
 
@@ -506,11 +499,11 @@ of your choice. There are a few common scenarios:
     return Provider<Example>(
       create: (_) => Example(),
       // we use `builder` to obtain a new `BuildContext` that has access to the provider
-      builder: (context) {
+      builder: (context, child) {
         // No longer throws
-        return Text(context.watch<Example>()),
+        return Text(context.watch<Example>().toString());
       }
-    ),
+    );
   }
   ```
 

@@ -371,11 +371,26 @@ class _InheritedProviderScopeElement<T> extends InheritedElement
   bool _shouldNotifyDependents = false;
   bool _debugInheritLocked = false;
   bool _isNotifyDependentsEnabled = true;
-  bool _firstBuild = true;
   bool _updatedShouldNotify = false;
   bool _isBuildFromExternalSources = false;
-  late _DelegateState<T, _Delegate<T>> _delegateState;
+  late final _DelegateState<T, _Delegate<T>> _delegateState =
+      widget.owner._delegate.createState()..element = this;
   late String _debugId;
+
+  @override
+  InheritedElement? getElementForInheritedWidgetOfExactType<
+      InheritedWidgetType extends InheritedWidget>() {
+    InheritedElement? inheritedElement;
+
+    // An InheritedProvider<T>'s update tries to obtain a parent provider of
+    // the same type.
+    visitAncestorElements((parent) {
+      inheritedElement =
+          parent.getElementForInheritedWidgetOfExactType<InheritedWidgetType>();
+      return false;
+    });
+    return inheritedElement;
+  }
 
   @override
   void mount(Element? parent, dynamic newSlot) {
@@ -485,15 +500,6 @@ class _InheritedProviderScopeElement<T> extends InheritedElement
     if (shouldNotify) {
       dependent.didChangeDependencies();
     }
-  }
-
-  @override
-  void performRebuild() {
-    if (_firstBuild) {
-      _firstBuild = false;
-      _delegateState = widget.owner._delegate.createState()..element = this;
-    }
-    super.performRebuild();
   }
 
   @override
