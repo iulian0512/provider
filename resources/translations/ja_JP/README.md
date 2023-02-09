@@ -328,7 +328,7 @@ Flutter にはある瞬間のウィジェットツリーの状態を表示する
 
 これを解決するためには以下の 2 つの方法があります。
 
-- Flutter から提供された [Diagnosticable](https://api.flutter.dev/flutter/foundation/Diagnosticable-class.html) API を使用する。
+- Flutter から提供された [Diagnosticable](https://api.flutter.dev/flutter/foundation/Diagnosticable-mixin.html) API を使用する。
 
   プロバイダーに依存するオブジェクトクラスで [DiagnosticableTreeMixin] をミックスインして [debugFillProperties](https://api.flutter.dev/flutter/foundation/DiagnosticableTreeMixin/debugFillProperties.html) に出力が必要なプロパティを定義してください。
 
@@ -391,7 +391,7 @@ initState() {
 Value value;
 
 Widget build(BuildContext context) {
-  final value = context.watch<Foo>.value;
+  final value = context.watch<Foo>().value;
   if (value != this.value) {
     this.value = value;
     print(value);
