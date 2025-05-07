@@ -129,13 +129,47 @@ class MultiProvider extends Nested {
     TransitionBuilder? builder,
   }) : super(
           key: key,
-          children: providers,
+          children: _collapseProviders(providers),
           child: builder != null
               ? Builder(
                   builder: (context) => builder(context, child),
                 )
               : child,
         );
+
+  static List<SingleChildWidget> _collapseProviders(
+    List<SingleChildWidget> providers,
+  ) {
+    // Merge InheritedProviders together
+    Widget Function(Widget? child)? previous;
+
+    var i = 0;
+    for (; i < providers.length; i++) {
+      final provider = providers[i];
+      if (provider is InheritedProvider) {
+        final p = previous;
+
+        final builder = p == null
+            ? (Widget? child) =>
+                provider._buildWithChild(child, key: provider.key)
+            : (Widget? child) {
+                return p(provider._buildWithChild(child, key: provider.key));
+              };
+
+        previous = builder;
+      } else {
+        break;
+      }
+    }
+
+    return [
+      if (previous != null)
+        SingleChildBuilder(
+          builder: (context, child) => previous!(child),
+        ),
+      if (i < providers.length) ...providers.sublist(i),
+    ];
+  }
 }
 
 /// A [Provider] that manages the lifecycle of the value it provides by
